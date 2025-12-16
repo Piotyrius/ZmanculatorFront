@@ -1,0 +1,79 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "./apiClient";
+
+export type PatternGenerationRequest = {
+  project_id: number;
+  garment_type: string;
+  fit: string;
+  category: string;
+  measurements: {
+    values: Record<string, number>;
+    unit: string;
+  };
+  drafting_school_id: string;
+  drafting_school_version: string;
+  block_id: string;
+  block_version: string;
+  rule_graph_id: string;
+  rule_graph_version: string;
+  size_profile_id?: string;
+  ease_profile_id?: string;
+  transform_pipeline_ids?: string[];
+  debug?: boolean;
+};
+
+export type PatternGenerationResponse = {
+  pattern_id: number;
+  status: string;
+  result_id: number;
+};
+
+export type PatternResult = {
+  id: number;
+  pattern_id: number;
+  geometry: Record<string, unknown> | null;
+  exports: {
+    svg?: {
+      mime_type: string;
+      content: string;
+      metadata: Record<string, unknown>;
+    };
+    [key: string]: unknown;
+  };
+};
+
+export async function generatePattern(
+  request: PatternGenerationRequest
+): Promise<PatternGenerationResponse> {
+  return apiFetch<PatternGenerationResponse>("/patterns/generate", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+export async function getPatternResult(
+  patternId: number
+): Promise<PatternResult> {
+  return apiFetch<PatternResult>(`/patterns/${patternId}/result`);
+}
+
+// React Query hooks
+export function usePatternResult(patternId: number | null) {
+  return useQuery({
+    queryKey: ["pattern-result", patternId],
+    queryFn: () => (patternId ? getPatternResult(patternId) : null),
+    enabled: !!patternId,
+  });
+}
+
+export function useGeneratePattern() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: generatePattern,
+    onSuccess: (data) => {
+      // Invalidate pattern result query
+      queryClient.invalidateQueries({ queryKey: ["pattern-result", data.pattern_id] });
+    },
+  });
+}
+

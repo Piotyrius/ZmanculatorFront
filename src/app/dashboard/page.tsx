@@ -110,7 +110,12 @@ export default function DashboardPage() {
                       key={project.id}
                       className="flex items-center justify-between py-2"
                     >
-                      <span>{project.name}</span>
+                      <button
+                        onClick={() => router.push(`/dashboard/projects/${project.id}`)}
+                        className="flex-1 text-left text-slate-200 transition hover:text-sky-400"
+                      >
+                        {project.name}
+                      </button>
                       <span className="text-xs uppercase text-slate-500">
                         {project.status}
                       </span>
