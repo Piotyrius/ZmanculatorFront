@@ -9,6 +9,7 @@ import {
   useEaseProfiles,
   useSizeProfiles,
   useTransformPipelines,
+  useRuleGraphs,
 } from "../../../../lib/configs";
 import {
   useGeneratePattern,
@@ -34,6 +35,7 @@ export default function ProjectWorkspacePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedSchool, setSelectedSchool] = useState<number | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<number | null>(null);
+  const [selectedRuleGraph, setSelectedRuleGraph] = useState<number | null>(null);
   const [selectedEase, setSelectedEase] = useState<number | null>(null);
   const [selectedTransforms, setSelectedTransforms] = useState<number[]>([]);
   const [generatedPatternId, setGeneratedPatternId] = useState<number | null>(null);
@@ -44,6 +46,7 @@ export default function ProjectWorkspacePage() {
 
   const { data: draftingSchools } = useDraftingSchools();
   const { data: blocks } = useBlocks();
+  const { data: ruleGraphs } = useRuleGraphs();
   const { data: easeProfiles } = useEaseProfiles();
   const { data: sizeProfiles } = useSizeProfiles();
   const { data: transformPipelines } = useTransformPipelines();
@@ -127,8 +130,9 @@ export default function ProjectWorkspacePage() {
 
     const school = draftingSchools?.find((s) => s.id === selectedSchool);
     const block = blocks?.find((b) => b.id === selectedBlock);
+    const ruleGraph = ruleGraphs?.find((r) => r.id === selectedRuleGraph);
 
-    if (!school || !block) {
+    if (!school || !block || !ruleGraph) {
       return;
     }
 
@@ -146,8 +150,8 @@ export default function ProjectWorkspacePage() {
         drafting_school_version: school.version,
         block_id: block.id.toString(),
         block_version: block.version,
-        rule_graph_id: "default", // Default for MVP
-        rule_graph_version: "1.0",
+        rule_graph_id: ruleGraph.id.toString(),
+        rule_graph_version: ruleGraph.version,
         ease_profile_id: selectedEase ? selectedEase.toString() : undefined,
         transform_pipeline_ids: selectedTransforms.map((t) => t.toString()),
       });
@@ -174,6 +178,8 @@ export default function ProjectWorkspacePage() {
         return selectedSchool !== null;
       case "block":
         return selectedBlock !== null;
+      case "ruleGraph":
+        return selectedRuleGraph !== null;
       case "ease":
         return true; // Optional
       case "transform":
@@ -350,6 +356,42 @@ export default function ProjectWorkspacePage() {
                     </select>
                     {selectedBlock && (
                       <button
+                        onClick={() => setStep("ruleGraph")}
+                        className="mt-2 w-full rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-400"
+                      >
+                        Next: Rule Graph
+                      </button>
+                    )}
+                  </div>
+                )}
+
+              {/* Step 5: Rule Graph */}
+              {step !== "measurement" &&
+                step !== "category" &&
+                step !== "school" &&
+                step !== "block" && (
+                  <div className="mb-4">
+                    <h3 className="mb-2 text-sm font-medium text-slate-200">
+                      5. Rule Graph Configuration
+                    </h3>
+                    <select
+                      value={selectedRuleGraph || ""}
+                      onChange={(e) =>
+                        setSelectedRuleGraph(
+                          e.target.value ? parseInt(e.target.value, 10) : null
+                        )
+                      }
+                      className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 outline-none focus:border-sky-500"
+                    >
+                      <option value="">Choose rule graph...</option>
+                      {ruleGraphs?.map((graph) => (
+                        <option key={graph.id} value={graph.id}>
+                          {graph.name} (v{graph.version})
+                        </option>
+                      ))}
+                    </select>
+                    {selectedRuleGraph && (
+                      <button
                         onClick={() => setStep("ease")}
                         className="mt-2 w-full rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-400"
                       >
@@ -359,14 +401,15 @@ export default function ProjectWorkspacePage() {
                   </div>
                 )}
 
-              {/* Step 5: Ease Profile (Optional) */}
+              {/* Step 6: Ease Profile (Optional) */}
               {step !== "measurement" &&
                 step !== "category" &&
                 step !== "school" &&
-                step !== "block" && (
+                step !== "block" &&
+                step !== "ruleGraph" && (
                   <div className="mb-4">
                     <h3 className="mb-2 text-sm font-medium text-slate-200">
-                      5. Ease Profile (Optional)
+                      6. Ease Profile (Optional)
                     </h3>
                     <select
                       value={selectedEase || ""}
@@ -402,11 +445,11 @@ export default function ProjectWorkspacePage() {
                   </div>
                 )}
 
-              {/* Step 6: Transform Pipelines (Optional) */}
+              {/* Step 7: Transform Pipelines (Optional) */}
               {step === "transform" && (
                 <div className="mb-4">
                   <h3 className="mb-2 text-sm font-medium text-slate-200">
-                    6. Transform Pipelines (Optional)
+                    7. Transform Pipelines (Optional)
                   </h3>
                   <div className="space-y-2">
                     {transformPipelines?.map((pipeline) => (

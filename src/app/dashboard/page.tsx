@@ -7,6 +7,7 @@ import {
   createProject,
   listProjects,
   listMeasurementProfiles,
+  createMeasurementProfile,
   type Project,
   type MeasurementProfile,
 } from "../../lib/projects";
@@ -19,6 +20,17 @@ export default function DashboardPage() {
   const [profiles, setProfiles] = useState<MeasurementProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState("");
+  const [showMeasurementForm, setShowMeasurementForm] = useState(false);
+  const [measurementName, setMeasurementName] = useState("");
+  const [measurementCategory, setMeasurementCategory] = useState("womenswear");
+  const [measurementUnit, setMeasurementUnit] = useState("mm");
+  const [measurementValues, setMeasurementValues] = useState<Record<string, number>>({
+    chest: 0,
+    waist: 0,
+    hip: 0,
+    shoulder_width: 0,
+    back_length: 0,
+  });
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -52,6 +64,32 @@ export default function DashboardPage() {
     const project = await createProject(projectName.trim());
     setProjects((prev) => [project, ...prev]);
     setProjectName("");
+  };
+
+  const handleCreateMeasurementProfile = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!measurementName.trim()) return;
+    try {
+      const profile = await createMeasurementProfile({
+        name: measurementName.trim(),
+        category: measurementCategory,
+        unit: measurementUnit,
+        values: measurementValues,
+      });
+      setProfiles((prev) => [profile, ...prev]);
+      setShowMeasurementForm(false);
+      setMeasurementName("");
+      setMeasurementValues({
+        chest: 0,
+        waist: 0,
+        hip: 0,
+        shoulder_width: 0,
+        back_length: 0,
+      });
+    } catch (error) {
+      console.error("Failed to create measurement profile:", error);
+      alert("Failed to create measurement profile. Please check the console for details.");
+    }
   };
 
   return (
@@ -128,26 +166,121 @@ export default function DashboardPage() {
 
           <section className="space-y-3">
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <h2 className="text-sm font-semibold text-slate-200">
-                Measurement profiles
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-slate-200">
+                  Measurement profiles
+                </h2>
+                <button
+                  onClick={() => setShowMeasurementForm(!showMeasurementForm)}
+                  className="rounded-md bg-sky-500 px-3 py-1.5 text-xs font-medium text-slate-950 transition hover:bg-sky-400"
+                >
+                  {showMeasurementForm ? "Cancel" : "+ New Profile"}
+                </button>
+              </div>
               <p className="mt-1 text-sm text-slate-400">
                 Saved body measurements will appear here. Use them across
                 projects and garment categories.
               </p>
+
+              {showMeasurementForm && (
+                <form
+                  onSubmit={handleCreateMeasurementProfile}
+                  className="mt-4 space-y-3 rounded-lg border border-slate-700 bg-slate-950 p-4"
+                >
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-300">
+                      Profile Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g., My Measurements"
+                      className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-50 outline-none focus:border-sky-500"
+                      value={measurementName}
+                      onChange={(e) => setMeasurementName(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-300">
+                        Category
+                      </label>
+                      <select
+                        className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-50 outline-none focus:border-sky-500"
+                        value={measurementCategory}
+                        onChange={(e) => setMeasurementCategory(e.target.value)}
+                      >
+                        <option value="womenswear">Womenswear</option>
+                        <option value="menswear">Menswear</option>
+                        <option value="childrenswear">Childrenswear</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-300">
+                        Unit
+                      </label>
+                      <select
+                        className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-50 outline-none focus:border-sky-500"
+                        value={measurementUnit}
+                        onChange={(e) => setMeasurementUnit(e.target.value)}
+                      >
+                        <option value="mm">Millimeters (mm)</option>
+                        <option value="cm">Centimeters (cm)</option>
+                        <option value="in">Inches (in)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-slate-300">
+                      Body Measurements ({measurementUnit})
+                    </label>
+                    {Object.entries(measurementValues).map(([key, value]) => (
+                      <div key={key} className="flex items-center gap-2">
+                        <label className="w-32 text-xs text-slate-400 capitalize">
+                          {key.replace("_", " ")}:
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          required
+                          className="flex-1 rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm text-slate-50 outline-none focus:border-sky-500"
+                          value={value || ""}
+                          onChange={(e) =>
+                            setMeasurementValues({
+                              ...measurementValues,
+                              [key]: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-slate-50 transition hover:bg-green-500"
+                  >
+                    Create Profile
+                  </button>
+                </form>
+              )}
+
               <div className="mt-3 space-y-1 text-sm text-slate-300">
-                {profiles.length === 0 ? (
+                {profiles.length === 0 && !showMeasurementForm ? (
                   <p className="text-slate-500">
-                    No profiles yet. A profile editor will be added in the next
-                    step.
+                    No profiles yet. Click "+ New Profile" to create one.
                   </p>
                 ) : (
                   <ul className="space-y-1">
                     {profiles.map((profile) => (
-                      <li key={profile.id}>
-                        {profile.name}{" "}
-                        <span className="text-xs text-slate-500">
-                          ({profile.category})
+                      <li key={profile.id} className="flex items-center justify-between">
+                        <span>
+                          {profile.name}{" "}
+                          <span className="text-xs text-slate-500">
+                            ({profile.category})
+                          </span>
                         </span>
                       </li>
                     ))}

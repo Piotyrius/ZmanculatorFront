@@ -4,6 +4,9 @@ export type Project = {
   id: number;
   name: string;
   status: string;
+  created_at?: string;
+  image_url?: string;
+  category?: string;
 };
 
 export type MeasurementProfile = {

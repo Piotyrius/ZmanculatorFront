@@ -37,6 +37,13 @@ export type TransformPipeline = {
   config: Record<string, unknown>;
 };
 
+export type RuleGraph = {
+  id: number;
+  name: string;
+  version: string;
+  config: Record<string, unknown>;
+};
+
 export async function listDraftingSchools(
   activeOnly = true
 ): Promise<DraftingSchool[]> {
@@ -59,6 +66,10 @@ export async function listSizeProfiles(): Promise<SizeProfile[]> {
 
 export async function listTransformPipelines(): Promise<TransformPipeline[]> {
   return apiFetch<TransformPipeline[]>("/configs/transform-pipelines");
+}
+
+export async function listRuleGraphs(): Promise<RuleGraph[]> {
+  return apiFetch<RuleGraph[]>("/configs/rule-graphs");
 }
 
 // React Query hooks
@@ -94,6 +105,13 @@ export function useTransformPipelines() {
   return useQuery({
     queryKey: ["transform-pipelines"],
     queryFn: () => listTransformPipelines(),
+  });
+}
+
+export function useRuleGraphs() {
+  return useQuery({
+    queryKey: ["rule-graphs"],
+    queryFn: () => listRuleGraphs(),
   });
 }
 
