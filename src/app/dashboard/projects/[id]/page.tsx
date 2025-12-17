@@ -58,6 +58,28 @@ export default function ProjectWorkspacePage() {
   const { data: easeProfiles } = useEaseProfiles();
   const { data: sizeProfiles } = useSizeProfiles();
   const { data: transformPipelines } = useTransformPipelines();
+  
+  // MVP: Filter to show only Winifred Aldrich or Müller & Sohn
+  const mvpSchools = draftingSchools?.filter(
+    (school) => 
+      school.name.toLowerCase().includes("winifred aldrich") ||
+      school.name.toLowerCase().includes("müller") ||
+      school.name.toLowerCase().includes("muller")
+  ) || [];
+  
+  // MVP: Filter blocks to show only tested ones (Bodice with Waist Darts)
+  const mvpBlocks = blocks?.filter(
+    (block) => 
+      block.name.toLowerCase().includes("bodice") && 
+      block.name.toLowerCase().includes("waist")
+  ) || [];
+  
+  // MVP: Filter rule graphs to show only bodice with waist darts
+  const mvpRuleGraphs = ruleGraphs?.filter(
+    (graph) => 
+      graph.name.toLowerCase().includes("bodice") && 
+      graph.name.toLowerCase().includes("waist")
+  ) || [];
   const { data: patternResult, refetch: refetchPatternResult } = usePatternResult(generatedPatternId);
   const generatePattern = useGeneratePattern();
 
@@ -202,9 +224,17 @@ export default function ProjectWorkspacePage() {
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8">
         <header className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">{project.name}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-semibold">{project.name}</h1>
+              <span className="rounded-full bg-yellow-900/50 px-3 py-1 text-xs font-medium text-yellow-400">
+                Private Beta for Tailors
+              </span>
+            </div>
             <p className="mt-1 text-sm text-slate-400">
               Configure and generate your pattern
+            </p>
+            <p className="mt-1 text-xs text-amber-400">
+              ⚠️ Draft pattern for testing and fitting purposes
             </p>
           </div>
           <button
@@ -321,11 +351,17 @@ export default function ProjectWorkspacePage() {
                     className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 outline-none focus:border-sky-500"
                   >
                     <option value="">Choose drafting school...</option>
-                    {draftingSchools?.map((school) => (
+                    {mvpSchools.map((school) => (
                       <option key={school.id} value={school.id}>
                         {school.name} (v{school.version})
                       </option>
                     ))}
+                  </select>
+                  {mvpSchools.length === 0 && (
+                    <p className="mt-2 text-xs text-slate-400">
+                      Using Winifred Aldrich drafting system (MVP)
+                    </p>
+                  )}
                   </select>
                   {selectedSchool && (
                     <button
@@ -356,11 +392,17 @@ export default function ProjectWorkspacePage() {
                       className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 outline-none focus:border-sky-500"
                     >
                       <option value="">Choose block...</option>
-                      {blocks?.map((block) => (
+                      {mvpBlocks.map((block) => (
                         <option key={block.id} value={block.id}>
                           {block.name} (v{block.version})
                         </option>
                       ))}
+                    </select>
+                    {mvpBlocks.length === 0 && (
+                      <p className="mt-2 text-xs text-slate-400">
+                        Only tested blocks are shown (Bodice with Waist Darts)
+                      </p>
+                    )}
                     </select>
                     {selectedBlock && (
                       <button
@@ -392,11 +434,17 @@ export default function ProjectWorkspacePage() {
                       className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 outline-none focus:border-sky-500"
                     >
                       <option value="">Choose rule graph...</option>
-                      {ruleGraphs?.map((graph) => (
+                      {mvpRuleGraphs.map((graph) => (
                         <option key={graph.id} value={graph.id}>
                           {graph.name} (v{graph.version})
                         </option>
                       ))}
+                    </select>
+                    {mvpRuleGraphs.length === 0 && (
+                      <p className="mt-2 text-xs text-slate-400">
+                        Only tested rule graphs are shown
+                      </p>
+                    )}
                     </select>
                     {selectedRuleGraph && (
                       <button
@@ -435,63 +483,15 @@ export default function ProjectWorkspacePage() {
                         </option>
                       ))}
                     </select>
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        onClick={() => setStep("transform")}
-                        className="flex-1 rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-400"
-                      >
-                        Next: Transforms (Optional)
-                      </button>
-                      <button
-                        onClick={handleGenerate}
-                        disabled={generatePattern.isPending}
-                        className="flex-1 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-slate-50 transition hover:bg-green-500 disabled:opacity-50"
-                      >
-                        {generatePattern.isPending ? "Generating..." : "Generate"}
-                      </button>
-                    </div>
+                    <button
+                      onClick={handleGenerate}
+                      disabled={generatePattern.isPending}
+                      className="mt-2 w-full rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-slate-50 transition hover:bg-green-500 disabled:opacity-50"
+                    >
+                      {generatePattern.isPending ? "Generating..." : "Generate Pattern"}
+                    </button>
                   </div>
                 )}
-
-              {/* Step 7: Transform Pipelines (Optional) */}
-              {step === "transform" && (
-                <div className="mb-4">
-                  <h3 className="mb-2 text-sm font-medium text-slate-200">
-                    7. Transform Pipelines (Optional)
-                  </h3>
-                  <div className="space-y-2">
-                    {transformPipelines?.map((pipeline) => (
-                      <label
-                        key={pipeline.id}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedTransforms.includes(pipeline.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedTransforms([...selectedTransforms, pipeline.id]);
-                            } else {
-                              setSelectedTransforms(
-                                selectedTransforms.filter((id) => id !== pipeline.id)
-                              );
-                            }
-                          }}
-                          className="rounded border-slate-700"
-                        />
-                        {pipeline.name} (v{pipeline.version})
-                      </label>
-                    ))}
-                  </div>
-                  <button
-                    onClick={handleGenerate}
-                    disabled={generatePattern.isPending}
-                    className="mt-2 w-full rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-slate-50 transition hover:bg-green-500 disabled:opacity-50"
-                  >
-                    {generatePattern.isPending ? "Generating..." : "Generate Pattern"}
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 
@@ -499,7 +499,12 @@ export default function ProjectWorkspacePage() {
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
             <h2 className="mb-4 text-lg font-semibold">Pattern Preview</h2>
             {patternResult?.exports?.svg?.content ? (
-              <PatternViewer svgContent={patternResult.exports.svg.content} />
+              <>
+                <div className="mb-3 rounded-md bg-amber-900/20 border border-amber-800/50 p-2 text-xs text-amber-300">
+                  ⚠️ Draft pattern for testing and fitting purposes
+                </div>
+                <PatternViewer svgContent={patternResult.exports.svg.content} />
+              </>
             ) : generatedPatternId ? (
               <div className="flex items-center justify-center py-12 text-slate-400">
                 Loading pattern...
