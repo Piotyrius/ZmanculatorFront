@@ -3,7 +3,7 @@ import { locales } from './i18n/request';
 
 export default createMiddleware({
   locales,
-  defaultLocale: 'en',
+  defaultLocale: 'ka',
   localePrefix: 'always'
 });
 
