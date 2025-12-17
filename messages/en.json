@@ -123,6 +123,31 @@
     "step2": "Create projects to organize garments and base blocks.",
     "step3": "Select drafting schools, blocks, ease, and style transforms.",
     "step4": "Generate patterns and export SVG/DXF/PDF for production."
+  },
+  "catalog": {
+    "title": "Garment catalog",
+    "subtitle": "Browse base blocks and pattern types like a clothing shop, then configure them for your client."
+  },
+  "product": {
+    "step1": "Measurements",
+    "step2": "Construction system",
+    "step3": "Fit and ease",
+    "step4": "Style options",
+    "step5": "Review & generate"
+  },
+  "patternsPage": {
+    "title": "Pattern",
+    "loading": "Loading pattern…",
+    "noSvg": "This pattern does not have an SVG export yet.",
+    "noExports": "No exports available for this pattern."
+  },
+  "projectsPage": {
+    "title": "Projects",
+    "empty": "No projects yet. Create a project from the configuration flow when generating your first pattern."
+  },
+  "measurementsPage": {
+    "title": "Measurement profiles",
+    "empty": "No measurement profiles yet. Create your first profile above."
   }
 }
 

@@ -1,19 +1,14 @@
-import { getTranslations } from 'next-intl/server';
+ 'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
-import { locales } from '../../i18n/request';
+import { useTranslations, useLocale } from 'next-intl';
 
-export function generateStaticParams() {
-  return locales.map((locale) => ({ locale }));
-}
+export const dynamic = 'force-dynamic';
 
-type HomeParams = {
-  locale: string;
-};
-
-export default async function Home({ params }: { params: HomeParams }) {
-  const { locale } = params;
-  const t = await getTranslations('home', { locale });
+export default function Home() {
+  const locale = useLocale();
+  const t = useTranslations('home');
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">

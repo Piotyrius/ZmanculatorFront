@@ -1,29 +1,32 @@
 import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { locales } from '../../i18n/request';
-import { Geist, Geist_Mono } from 'next/font/google';
 import type { Metadata } from 'next';
-import '../globals.css';
 import { ReactQueryProvider } from '../../lib/reactQuery';
 import { AuthProvider } from '../../lib/auth/AuthContext';
 import Navigation from '../../components/Navigation';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
+async function loadMessages(locale: string) {
+  switch (locale) {
+    case 'en':
+      return (await import('../../../messages/en.json')).default;
+    case 'ka':
+      return (await import('../../../messages/ka.json')).default;
+    default:
+      // Fallback to English if an unknown locale is passed
+      return (await import('../../../messages/en.json')).default;
+  }
+}
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
+const locales = ['en', 'ka'] as const;
+type Locale = (typeof locales)[number];
 
 export const metadata: Metadata = {
   title: 'Universal Garment Pattern Studio',
   description:
     'Frontend control and visualization layer for the universal garment pattern construction engine.',
 };
+
+export const dynamic = 'force-dynamic';
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -34,31 +37,21 @@ export default async function LocaleLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 }) {
-  const { locale } = params;
-  
-  if (!locales.includes(locale as any)) {
-    notFound();
-  }
-
-  const messages = await getMessages();
+  const { locale } = await params;
+  const messages = await loadMessages(locale);
 
   return (
-    <html lang={locale}>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <NextIntlClientProvider messages={messages}>
-          <ReactQueryProvider>
-            <AuthProvider>
-              <Navigation />
-              {children}
-            </AuthProvider>
-          </ReactQueryProvider>
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <NextIntlClientProvider messages={messages} locale={locale}>
+      <ReactQueryProvider>
+        <AuthProvider>
+          <Navigation />
+          {children}
+        </AuthProvider>
+      </ReactQueryProvider>
+    </NextIntlClientProvider>
   );
 }
+
 

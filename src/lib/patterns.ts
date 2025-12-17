@@ -1,5 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./apiClient";
+import { API_BASE_URL } from "./config";
+import { getAccessToken } from "./auth/tokenStore";
 
 export type PatternGenerationRequest = {
   project_id: number;
@@ -43,7 +45,7 @@ export type PatternResult = {
 };
 
 export async function generatePattern(
-  request: PatternGenerationRequest
+  request: PatternGenerationRequest,
 ): Promise<PatternGenerationResponse> {
   return apiFetch<PatternGenerationResponse>("/patterns/generate", {
     method: "POST",
@@ -52,9 +54,24 @@ export async function generatePattern(
 }
 
 export async function getPatternResult(
-  patternId: number
+  patternId: number,
 ): Promise<PatternResult> {
   return apiFetch<PatternResult>(`/patterns/${patternId}/result`);
+}
+
+export async function exportPatternFile(
+  patternId: number,
+  format: string,
+): Promise<Blob> {
+  const token = getAccessToken();
+  const url = `${API_BASE_URL}/patterns/${patternId}/export?format=${format}`;
+  const response = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) {
+    throw new Error("Export failed");
+  }
+  return response.blob();
 }
 
 // React Query hooks
@@ -71,9 +88,14 @@ export function useGeneratePattern() {
   return useMutation({
     mutationFn: generatePattern,
     onSuccess: (data) => {
-      // Invalidate pattern result query
-      queryClient.invalidateQueries({ queryKey: ["pattern-result", data.pattern_id] });
+      queryClient.invalidateQueries({
+        queryKey: ["pattern-result", data.pattern_id],
+      });
     },
   });
 }
 
+export function usePatternGeneration() {
+  // Semantic alias for useGeneratePattern to match the plan terminology.
+  return useGeneratePattern();
+}

@@ -21,7 +21,15 @@ import { apiFetch } from "../../../../lib/apiClient";
 import { API_BASE_URL } from "../../../../lib/config";
 import PatternViewer from "../../../../components/PatternViewer";
 
-type Step = "measurement" | "category" | "school" | "block" | "ease" | "transform" | "generate";
+type Step =
+  | "measurement"
+  | "category"
+  | "school"
+  | "block"
+  | "ruleGraph"
+  | "ease"
+  | "transform"
+  | "generate";
 type Tab = "configure" | "history";
 
 export default function ProjectWorkspacePage() {

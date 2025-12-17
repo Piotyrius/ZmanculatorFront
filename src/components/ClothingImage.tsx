@@ -64,6 +64,7 @@ export default function ClothingImage({
           src={imageSrc}
           alt={alt}
           className="w-full h-full object-cover"
+          loading="eager"
           onError={() => setImageError(true)}
         />
       </div>

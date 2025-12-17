@@ -7,6 +7,7 @@ import { apiFetch, type ApiError } from "../apiClient";
 type AuthContextValue = {
   accessToken: string | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 };
@@ -20,12 +21,13 @@ type TokenResponse = {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessTokenState, setAccessTokenState] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Load token from storage on mount
     const initial = loadAccessTokenFromStorage();
-    if (initial) {
-      setAccessTokenState(initial);
-    }
+    setAccessTokenState(initial);
+    setIsLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -62,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         accessToken: accessTokenState,
         isAuthenticated: Boolean(accessTokenState),
+        isLoading,
         login,
         logout,
       }}
