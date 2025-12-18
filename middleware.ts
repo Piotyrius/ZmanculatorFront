@@ -19,7 +19,8 @@ export default function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Apply locale middleware for other routes
+  // Let next-intl middleware handle all locale routing
+  // It will automatically redirect / to /ka (defaultLocale)
   return intlMiddleware(request);
 }
 

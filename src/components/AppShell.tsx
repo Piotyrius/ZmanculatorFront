@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../lib/auth/AuthContext";
@@ -17,15 +17,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated, isLoading, logout } = useAuth();
+  const [currentLocale, setCurrentLocale] = useState<'ka' | 'en'>('ka');
+
+  // Get locale from cookie or default to Georgian
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cookieLocale = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('NEXT_LOCALE='))
+        ?.split('=')[1] as 'ka' | 'en' | undefined;
+      if (cookieLocale === 'ka' || cookieLocale === 'en') {
+        setCurrentLocale(cookieLocale);
+      }
+    }
+  }, []);
+
+  const switchLocale = (newLocale: 'ka' | 'en') => {
+    try {
+      setCurrentLocale(newLocale);
+      // Set cookie for next time
+      if (typeof document !== 'undefined') {
+        document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000`;
+      }
+      // Shop routes don't support locale prefixes, so redirect to locale home page
+      // This ensures we go to a valid route
+      window.location.href = `/${newLocale}`;
+    } catch (error) {
+      console.error('Error switching locale:', error);
+      // Fallback: use window.location for reliable redirect
+      if (typeof window !== 'undefined') {
+        window.location.href = `/${newLocale}`;
+      }
+    }
+  };
 
   useEffect(() => {
     // Only redirect if auth check is complete and user is not authenticated
     // Skip redirect for public pages (home, auth pages) to avoid loops
     if (!isLoading && !isAuthenticated && typeof window !== "undefined") {
-      const isPublicPage = pathname === "/" || pathname.startsWith("/auth/");
+      const isPublicPage = pathname === "/" || pathname.startsWith("/auth/") || pathname.startsWith("/ka/") || pathname.startsWith("/en/");
       if (!isPublicPage) {
-        // Shop routes require authentication
-        router.replace("/auth/login");
+        // Shop routes require authentication - redirect to locale-prefixed auth
+        // Get locale from cookie or default to 'ka'
+        const cookieLocale = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('NEXT_LOCALE='))
+          ?.split('=')[1];
+        const locale = (cookieLocale === 'en' || cookieLocale === 'ka') ? cookieLocale : 'ka';
+        window.location.href = `/${locale}/auth/login`;
       }
     }
   }, [isAuthenticated, isLoading, router, pathname]);
@@ -71,14 +110,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {isAuthenticated && (
-          <button
-            onClick={logout}
-            className="mt-4 rounded-md bg-red-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-600 shadow-sm"
-          >
-            Logout
-          </button>
-        )}
+        <div className="mt-auto space-y-2">
+          <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 p-2">
+            <span className="text-xs text-slate-600">ენა:</span>
+            <button
+              onClick={() => switchLocale('ka')}
+              className={`flex-1 rounded px-2 py-1 text-xs font-medium transition ${
+                currentLocale === 'ka'
+                  ? 'bg-sky-500 text-white'
+                  : 'text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              ქართული
+            </button>
+            <button
+              onClick={() => switchLocale('en')}
+              className={`flex-1 rounded px-2 py-1 text-xs font-medium transition ${
+                currentLocale === 'en'
+                  ? 'bg-sky-500 text-white'
+                  : 'text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              English
+            </button>
+          </div>
+          {isAuthenticated && (
+            <button
+              onClick={logout}
+              className="w-full rounded-md bg-red-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-600 shadow-sm"
+            >
+              Logout
+            </button>
+          )}
+        </div>
       </aside>
 
       <div className="flex min-h-screen flex-1 flex-col">
@@ -89,14 +153,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <span className="text-sm font-semibold">Pattern Studio</span>
           </Link>
-          {isAuthenticated && (
-            <button
-              onClick={logout}
-              className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-600 shadow-sm"
-            >
-              Logout
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 p-1">
+              <button
+                onClick={() => switchLocale('ka')}
+                className={`rounded px-2 py-1 text-xs font-medium transition ${
+                  currentLocale === 'ka'
+                    ? 'bg-sky-500 text-white'
+                    : 'text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                ქართ
+              </button>
+              <button
+                onClick={() => switchLocale('en')}
+                className={`rounded px-2 py-1 text-xs font-medium transition ${
+                  currentLocale === 'en'
+                    ? 'bg-sky-500 text-white'
+                    : 'text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                EN
+              </button>
+            </div>
+            {isAuthenticated && (
+              <button
+                onClick={logout}
+                className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-600 shadow-sm"
+              >
+                Logout
+              </button>
+            )}
+          </div>
         </header>
 
         <main className="flex-1 bg-slate-50 px-4 py-4 md:px-6 md:py-6">{children}</main>

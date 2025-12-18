@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useTranslations, useLocale } from 'next-intl';
 
 export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
 
 export default function Home() {
   const locale = useLocale();

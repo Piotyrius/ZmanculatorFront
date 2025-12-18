@@ -13,8 +13,49 @@ export default function Navigation() {
   const { isAuthenticated, logout } = useAuth();
 
   const switchLocale = (newLocale: string) => {
-    const newPathname = pathname.replace(`/${locale}`, `/${newLocale}`);
-    router.push(newPathname);
+    try {
+      // Get the current pathname without locale prefix
+      let pathWithoutLocale = pathname;
+      
+      // Remove locale prefix if it exists
+      if (pathname.startsWith(`/${locale}/`)) {
+        pathWithoutLocale = pathname.replace(`/${locale}/`, '/');
+      } else if (pathname === `/${locale}`) {
+        pathWithoutLocale = '/';
+      }
+      
+      // List of valid locale routes that exist
+      const validLocaleRoutes = ['', '/dashboard', '/auth/login', '/auth/register'];
+      
+      // Only try to preserve route if it's a known valid route
+      const isValidRoute = validLocaleRoutes.includes(pathWithoutLocale) || 
+                          pathWithoutLocale.startsWith('/dashboard/') ||
+                          pathWithoutLocale.startsWith('/auth/');
+      
+      if (isValidRoute && pathWithoutLocale !== '/') {
+        const newPath = `/${newLocale}${pathWithoutLocale}`;
+        if (typeof window !== 'undefined') {
+          window.location.href = newPath;
+        } else {
+          router.push(newPath);
+        }
+      } else {
+        // Default to home page for unknown routes
+        if (typeof window !== 'undefined') {
+          window.location.href = `/${newLocale}`;
+        } else {
+          router.push(`/${newLocale}`);
+        }
+      }
+    } catch (error) {
+      // Fallback to home page if switching fails
+      console.error('Error switching locale:', error);
+      if (typeof window !== 'undefined') {
+        window.location.href = `/${newLocale}`;
+      } else {
+        router.push(`/${newLocale}`);
+      }
+    }
   };
 
   return (
@@ -42,25 +83,28 @@ export default function Navigation() {
           )}
 
           <div className="flex items-center gap-2 border-l border-slate-700 pl-4">
-            <button
-              onClick={() => switchLocale('en')}
-              className={`rounded-md px-2 py-1 text-xs font-medium transition ${
-                locale === 'en'
-                  ? 'bg-sky-500 text-white'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              EN
-            </button>
+            <span className="text-xs text-slate-500 mr-1">{t('language')}:</span>
             <button
               onClick={() => switchLocale('ka')}
-              className={`rounded-md px-2 py-1 text-xs font-medium transition ${
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
                 locale === 'ka'
                   ? 'bg-sky-500 text-white'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
               }`}
+              aria-label="Switch to Georgian"
             >
-              GE
+              ქართული
+            </button>
+            <button
+              onClick={() => switchLocale('en')}
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                locale === 'en'
+                  ? 'bg-sky-500 text-white'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              }`}
+              aria-label="Switch to English"
+            >
+              English
             </button>
           </div>
 

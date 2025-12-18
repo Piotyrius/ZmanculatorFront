@@ -12,8 +12,8 @@ async function loadMessages(locale: string) {
     case 'ka':
       return (await import('../../../messages/ka.json')).default;
     default:
-      // Fallback to English if an unknown locale is passed
-      return (await import('../../../messages/en.json')).default;
+      // Fallback to Georgian (main language) if an unknown locale is passed
+      return (await import('../../../messages/ka.json')).default;
   }
 }
 
@@ -27,6 +27,8 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+export const revalidate = 0;
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
