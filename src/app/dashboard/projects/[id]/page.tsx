@@ -59,27 +59,35 @@ export default function ProjectWorkspacePage() {
   const { data: sizeProfiles } = useSizeProfiles();
   const { data: transformPipelines } = useTransformPipelines();
   
-  // MVP: Filter to show only Winifred Aldrich or Müller & Sohn
-  const mvpSchools = draftingSchools?.filter(
-    (school) => 
-      school.name.toLowerCase().includes("winifred aldrich") ||
-      school.name.toLowerCase().includes("müller") ||
-      school.name.toLowerCase().includes("muller")
-  ) || [];
-  
-  // MVP: Filter blocks to show only tested ones (Bodice with Waist Darts)
-  const mvpBlocks = blocks?.filter(
-    (block) => 
-      block.name.toLowerCase().includes("bodice") && 
-      block.name.toLowerCase().includes("waist")
-  ) || [];
-  
-  // MVP: Filter rule graphs to show only bodice with waist darts
-  const mvpRuleGraphs = ruleGraphs?.filter(
-    (graph) => 
-      graph.name.toLowerCase().includes("bodice") && 
-      graph.name.toLowerCase().includes("waist")
-  ) || [];
+  // Prefer a small, well-tested subset, but fall back to all available configs
+  const allSchools = draftingSchools ?? [];
+  const filteredSchools =
+    allSchools.filter(
+      (school) =>
+        school.name.toLowerCase().includes("winifred aldrich") ||
+        school.name.toLowerCase().includes("müller") ||
+        school.name.toLowerCase().includes("muller")
+    ) ?? [];
+  const mvpSchools = filteredSchools.length > 0 ? filteredSchools : allSchools;
+
+  const allBlocks = blocks ?? [];
+  const filteredBlocks =
+    allBlocks.filter(
+      (block) =>
+        block.name.toLowerCase().includes("bodice") &&
+        block.name.toLowerCase().includes("waist")
+    ) ?? [];
+  const mvpBlocks = filteredBlocks.length > 0 ? filteredBlocks : allBlocks;
+
+  const allRuleGraphs = ruleGraphs ?? [];
+  const filteredRuleGraphs =
+    allRuleGraphs.filter(
+      (graph) =>
+        graph.name.toLowerCase().includes("bodice") &&
+        graph.name.toLowerCase().includes("waist")
+    ) ?? [];
+  const mvpRuleGraphs =
+    filteredRuleGraphs.length > 0 ? filteredRuleGraphs : allRuleGraphs;
   const { data: patternResult, refetch: refetchPatternResult } = usePatternResult(generatedPatternId);
   const generatePattern = useGeneratePattern();
 
@@ -219,66 +227,108 @@ export default function ProjectWorkspacePage() {
     }
   };
 
+  // --- Size details helpers ---
+  const normalizeToMm = (value: number | undefined, unit: string | undefined) => {
+    if (!value || !unit) return null;
+    if (unit === "mm") return value;
+    if (unit === "cm") return value * 10;
+    if (unit === "in") return value * 25.4;
+    return value;
+  };
+
+  const coreMeasurements = selectedMeasurement
+    ? {
+        chest: normalizeToMm(selectedMeasurement.values?.chest, selectedMeasurement.unit),
+        waist: normalizeToMm(selectedMeasurement.values?.waist, selectedMeasurement.unit),
+        hip: normalizeToMm(selectedMeasurement.values?.hip, selectedMeasurement.unit),
+        back_length: normalizeToMm(
+          selectedMeasurement.values?.back_length,
+          selectedMeasurement.unit
+        ),
+        shoulder_width: normalizeToMm(
+          selectedMeasurement.values?.shoulder_width,
+          selectedMeasurement.unit
+        ),
+        body_height: normalizeToMm(
+          selectedMeasurement.values?.body_height,
+          selectedMeasurement.unit
+        ),
+      }
+    : null;
+
+  const derivedMeasurements =
+    coreMeasurements && coreMeasurements.chest && coreMeasurements.waist && coreMeasurements.hip
+      ? {
+          half_chest: coreMeasurements.chest / 2,
+          quarter_chest: coreMeasurements.chest / 4,
+          half_waist: coreMeasurements.waist / 2,
+          half_hip: coreMeasurements.hip / 2,
+          estimated_armhole_depth: coreMeasurements.chest / 4 + 20,
+        }
+      : null;
+
+  const selectedEaseProfile =
+    selectedEase != null ? easeProfiles?.find((p) => p.id === selectedEase) : null;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8">
-        <header className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold">{project.name}</h1>
-              <span className="rounded-full bg-yellow-900/50 px-3 py-1 text-xs font-medium text-yellow-400">
-                Private Beta for Tailors
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-slate-400">
-              Configure and generate your pattern
-            </p>
-            <p className="mt-1 text-xs text-amber-400">
-              ⚠️ Draft pattern for testing and fitting purposes
-            </p>
+    <div className="mx-auto flex max-w-7xl flex-col gap-6">
+      <header className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-slate-900">{project.name}</h1>
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
+              Private Beta for Tailors
+            </span>
           </div>
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="rounded-md border border-slate-700 px-4 py-2 text-sm text-slate-300 transition hover:bg-slate-800"
-          >
-            Back to Dashboard
-          </button>
-        </header>
-
-        {/* Tabs */}
-        <div className="flex gap-2 border-b border-slate-800">
-          <button
-            onClick={() => setActiveTab("configure")}
-            className={`px-4 py-2 text-sm font-medium transition ${
-              activeTab === "configure"
-                ? "border-b-2 border-sky-500 text-sky-400"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            Configure
-          </button>
-          <button
-            onClick={() => setActiveTab("history")}
-            className={`px-4 py-2 text-sm font-medium transition ${
-              activeTab === "history"
-                ? "border-b-2 border-sky-500 text-sky-400"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            History
-          </button>
+          <p className="mt-1 text-sm text-slate-600">
+            Configure and generate your pattern
+          </p>
+          <p className="mt-1 text-xs text-amber-600">
+            ⚠ Draft pattern for testing and fitting purposes
+          </p>
         </div>
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm transition hover:bg-slate-50"
+        >
+          Back to Dashboard
+        </button>
+      </header>
 
-        {activeTab === "configure" && (
-          <div className="grid gap-6 lg:grid-cols-[1fr,2fr]">
-            {/* Configuration Panel */}
-            <div className="space-y-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-              <h2 className="mb-4 text-lg font-semibold">Configuration Steps</h2>
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab("configure")}
+          className={`px-4 py-2 text-sm font-medium transition ${
+            activeTab === "configure"
+              ? "border-b-2 border-sky-500 text-sky-600"
+              : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          Configure
+        </button>
+        <button
+          onClick={() => setActiveTab("history")}
+          className={`px-4 py-2 text-sm font-medium transition ${
+            activeTab === "history"
+              ? "border-b-2 border-sky-500 text-sky-600"
+              : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          History
+        </button>
+      </div>
+
+      {activeTab === "configure" && (
+        <div className="grid gap-6 lg:grid-cols-[1.3fr,1.7fr]">
+          {/* Configuration Panel */}
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-lg font-semibold text-slate-900">Configuration Steps</h2>
               
               {/* Step 1: Measurement */}
               <div className="mb-4">
-                <h3 className="mb-2 text-sm font-medium text-slate-200">
+                <h3 className="mb-2 text-sm font-medium text-slate-900">
                   1. Select Measurement Profile
                 </h3>
                 <select
@@ -289,7 +339,7 @@ export default function ProjectWorkspacePage() {
                     );
                     setSelectedMeasurement(profile || null);
                   }}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 outline-none focus:border-sky-500"
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
                 >
                   <option value="">Choose a profile...</option>
                   {measurements.map((profile) => (
@@ -311,13 +361,13 @@ export default function ProjectWorkspacePage() {
               {/* Step 2: Category */}
               {step !== "measurement" && (
                 <div className="mb-4">
-                  <h3 className="mb-2 text-sm font-medium text-slate-200">
+                  <h3 className="mb-2 text-sm font-medium text-slate-900">
                     2. Garment Category
                   </h3>
                   <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 outline-none focus:border-sky-500"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
                   >
                     <option value="">Choose category...</option>
                     <option value="womenswear">Womenswear</option>
@@ -338,7 +388,7 @@ export default function ProjectWorkspacePage() {
               {/* Step 3: Drafting School */}
               {step !== "measurement" && step !== "category" && (
                 <div className="mb-4">
-                  <h3 className="mb-2 text-sm font-medium text-slate-200">
+                  <h3 className="mb-2 text-sm font-medium text-slate-900">
                     3. Drafting School
                   </h3>
                   <select
@@ -348,7 +398,7 @@ export default function ProjectWorkspacePage() {
                         e.target.value ? parseInt(e.target.value, 10) : null
                       )
                     }
-                    className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 outline-none focus:border-sky-500"
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
                   >
                     <option value="">Choose drafting school...</option>
                     {mvpSchools.map((school) => (
@@ -358,11 +408,10 @@ export default function ProjectWorkspacePage() {
                     ))}
                   </select>
                   {mvpSchools.length === 0 && (
-                    <p className="mt-2 text-xs text-slate-400">
+                    <p className="mt-2 text-xs text-slate-500">
                       Using Winifred Aldrich drafting system (MVP)
                     </p>
                   )}
-                  </select>
                   {selectedSchool && (
                     <button
                       onClick={() => setStep("block")}
@@ -379,7 +428,7 @@ export default function ProjectWorkspacePage() {
                 step !== "category" &&
                 step !== "school" && (
                   <div className="mb-4">
-                    <h3 className="mb-2 text-sm font-medium text-slate-200">
+                    <h3 className="mb-2 text-sm font-medium text-slate-900">
                       4. Block Configuration
                     </h3>
                     <select
@@ -389,7 +438,7 @@ export default function ProjectWorkspacePage() {
                           e.target.value ? parseInt(e.target.value, 10) : null
                         )
                       }
-                      className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 outline-none focus:border-sky-500"
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
                     >
                       <option value="">Choose block...</option>
                       {mvpBlocks.map((block) => (
@@ -399,11 +448,10 @@ export default function ProjectWorkspacePage() {
                       ))}
                     </select>
                     {mvpBlocks.length === 0 && (
-                      <p className="mt-2 text-xs text-slate-400">
+                      <p className="mt-2 text-xs text-slate-500">
                         Only tested blocks are shown (Bodice with Waist Darts)
                       </p>
                     )}
-                    </select>
                     {selectedBlock && (
                       <button
                         onClick={() => setStep("ruleGraph")}
@@ -421,7 +469,7 @@ export default function ProjectWorkspacePage() {
                 step !== "school" &&
                 step !== "block" && (
                   <div className="mb-4">
-                    <h3 className="mb-2 text-sm font-medium text-slate-200">
+                    <h3 className="mb-2 text-sm font-medium text-slate-900">
                       5. Rule Graph Configuration
                     </h3>
                     <select
@@ -431,7 +479,7 @@ export default function ProjectWorkspacePage() {
                           e.target.value ? parseInt(e.target.value, 10) : null
                         )
                       }
-                      className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 outline-none focus:border-sky-500"
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
                     >
                       <option value="">Choose rule graph...</option>
                       {mvpRuleGraphs.map((graph) => (
@@ -441,11 +489,10 @@ export default function ProjectWorkspacePage() {
                       ))}
                     </select>
                     {mvpRuleGraphs.length === 0 && (
-                      <p className="mt-2 text-xs text-slate-400">
+                      <p className="mt-2 text-xs text-slate-500">
                         Only tested rule graphs are shown
                       </p>
                     )}
-                    </select>
                     {selectedRuleGraph && (
                       <button
                         onClick={() => setStep("ease")}
@@ -464,7 +511,7 @@ export default function ProjectWorkspacePage() {
                 step !== "block" &&
                 step !== "ruleGraph" && (
                   <div className="mb-4">
-                    <h3 className="mb-2 text-sm font-medium text-slate-200">
+                    <h3 className="mb-2 text-sm font-medium text-slate-900">
                       6. Ease Profile (Optional)
                     </h3>
                     <select
@@ -474,7 +521,7 @@ export default function ProjectWorkspacePage() {
                           e.target.value ? parseInt(e.target.value, 10) : null
                         )
                       }
-                      className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 outline-none focus:border-sky-500"
+                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
                     >
                       <option value="">None (use default)</option>
                       {easeProfiles?.map((profile) => (
@@ -496,101 +543,100 @@ export default function ProjectWorkspacePage() {
           </div>
 
           {/* Pattern Viewer */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-            <h2 className="mb-4 text-lg font-semibold">Pattern Preview</h2>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-slate-900">Pattern Preview</h2>
             {patternResult?.exports?.svg?.content ? (
               <>
-                <div className="mb-3 rounded-md bg-amber-900/20 border border-amber-800/50 p-2 text-xs text-amber-300">
-                  ⚠️ Draft pattern for testing and fitting purposes
+                <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800">
+                  ⚠ Draft pattern for testing and fitting purposes
                 </div>
                 <PatternViewer svgContent={patternResult.exports.svg.content} />
               </>
             ) : generatedPatternId ? (
-              <div className="flex items-center justify-center py-12 text-slate-400">
+              <div className="flex items-center justify-center py-12 text-slate-500">
                 Loading pattern...
               </div>
             ) : (
               <div className="flex items-center justify-center py-12 text-slate-500">
-                Complete the configuration steps to generate a pattern
+                Complete the configuration steps to generate a pattern.
               </div>
             )}
           </div>
         </div>
-        )}
+      )}
 
-        {activeTab === "history" && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-            <h2 className="mb-4 text-lg font-semibold">Pattern History</h2>
-            {patternHistory.length === 0 ? (
-              <p className="text-sm text-slate-400">No patterns generated yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {patternHistory.map((pattern) => (
-                  <div
-                    key={pattern.id}
-                    className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-950 p-4"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-slate-200">
-                          Version {pattern.version_index || "?"}
-                        </span>
-                        {pattern.tag && (
-                          <span className="text-xs text-slate-500">({pattern.tag})</span>
-                        )}
-                        <span
-                          className={`rounded px-2 py-0.5 text-xs ${
-                            pattern.status === "completed"
-                              ? "bg-green-900/50 text-green-400"
-                              : "bg-yellow-900/50 text-yellow-400"
-                          }`}
-                        >
-                          {pattern.status}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {pattern.created_at
-                          ? new Date(pattern.created_at).toLocaleString()
-                          : "Unknown date"}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      {pattern.has_result && (
-                        <>
-                          <button
-                            onClick={() => handleExport(pattern.id, "svg")}
-                            className="rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-slate-700"
-                          >
-                            SVG
-                          </button>
-                          <button
-                            onClick={() => handleExport(pattern.id, "dxf")}
-                            className="rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-slate-700"
-                          >
-                            DXF
-                          </button>
-                          <button
-                            onClick={() => handleExport(pattern.id, "pdf")}
-                            className="rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-slate-700"
-                          >
-                            PDF
-                          </button>
-                        </>
+      {activeTab === "history" && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">Pattern History</h2>
+          {patternHistory.length === 0 ? (
+            <p className="text-sm text-slate-500">No patterns generated yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {patternHistory.map((pattern) => (
+                <div
+                  key={pattern.id}
+                  className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-slate-900">
+                        Version {pattern.version_index || "?"}
+                      </span>
+                      {pattern.tag && (
+                        <span className="text-xs text-slate-500">({pattern.tag})</span>
                       )}
-                      <button
-                        onClick={() => handleRestore(pattern.id)}
-                        className="rounded-md bg-sky-600 px-3 py-1.5 text-xs text-slate-50 transition hover:bg-sky-500"
+                      <span
+                        className={`rounded px-2 py-0.5 text-xs ${
+                          pattern.status === "completed"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
                       >
-                        Restore
-                      </button>
+                        {pattern.status}
+                      </span>
                     </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {pattern.created_at
+                        ? new Date(pattern.created_at).toLocaleString()
+                        : "Unknown date"}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+                  <div className="flex gap-2">
+                    {pattern.has_result && (
+                      <>
+                        <button
+                          onClick={() => handleExport(pattern.id, "svg")}
+                          className="rounded-md bg-slate-100 px-3 py-1.5 text-xs text-slate-700 transition hover:bg-slate-200"
+                        >
+                          SVG
+                        </button>
+                        <button
+                          onClick={() => handleExport(pattern.id, "dxf")}
+                          className="rounded-md bg-slate-100 px-3 py-1.5 text-xs text-slate-700 transition hover:bg-slate-200"
+                        >
+                          DXF
+                        </button>
+                        <button
+                          onClick={() => handleExport(pattern.id, "pdf")}
+                          className="rounded-md bg-slate-100 px-3 py-1.5 text-xs text-slate-700 transition hover:bg-slate-200"
+                        >
+                          PDF
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => handleRestore(pattern.id)}
+                      className="rounded-md bg-sky-600 px-3 py-1.5 text-xs text-slate-50 transition hover:bg-sky-500"
+                    >
+                      Restore
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

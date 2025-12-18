@@ -55,16 +55,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // Only redirect if auth check is complete and user is not authenticated
     // Skip redirect for public pages (home, auth pages) to avoid loops
     if (!isLoading && !isAuthenticated && typeof window !== "undefined") {
-      const isPublicPage = pathname === "/" || pathname.startsWith("/auth/") || pathname.startsWith("/ka/") || pathname.startsWith("/en/");
+      const isPublicPage =
+        pathname === "/" ||
+        pathname.startsWith("/auth/");
       if (!isPublicPage) {
-        // Shop routes require authentication - redirect to locale-prefixed auth
-        // Get locale from cookie or default to 'ka'
-        const cookieLocale = document.cookie
-          .split('; ')
-          .find(row => row.startsWith('NEXT_LOCALE='))
-          ?.split('=')[1];
-        const locale = (cookieLocale === 'en' || cookieLocale === 'ka') ? cookieLocale : 'ka';
-        window.location.href = `/${locale}/auth/login`;
+        // Shop routes require authentication - redirect to login
+        window.location.href = "/auth/login";
       }
     }
   }, [isAuthenticated, isLoading, router, pathname]);

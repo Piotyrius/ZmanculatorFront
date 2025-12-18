@@ -55,24 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccessToken(null);
     setAccessTokenState(null);
     if (typeof window !== "undefined") {
-      // Get current locale from pathname or default to 'ka'
-      const pathname = window.location.pathname;
-      let locale = 'ka';
-      if (pathname.startsWith('/en/') || pathname === '/en') {
-        locale = 'en';
-      } else if (pathname.startsWith('/ka/') || pathname === '/ka') {
-        locale = 'ka';
-      } else {
-        // Try to get from cookie
-        const cookieLocale = document.cookie
-          .split('; ')
-          .find(row => row.startsWith('NEXT_LOCALE='))
-          ?.split('=')[1];
-        if (cookieLocale === 'en' || cookieLocale === 'ka') {
-          locale = cookieLocale;
-        }
-      }
-      window.location.href = `/${locale}/auth/login`;
+      // Simple non-locale redirect to login page
+      window.location.href = "/auth/login";
     }
   };
 
