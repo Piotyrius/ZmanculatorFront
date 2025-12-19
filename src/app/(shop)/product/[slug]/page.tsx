@@ -65,6 +65,15 @@ export default function ProductConfiguratorPage() {
     product?.defaults.category ?? "womenswear",
   );
   const [newProfileUnit, setNewProfileUnit] = useState("mm");
+  const [newProfileValues, setNewProfileValues] = useState({
+    chest: "",
+    waist: "",
+    hip: "",
+    back_length: "",
+    shoulder_width: "",
+    body_height: "",
+    bust: "",
+  });
 
   const [selectedSchoolId, setSelectedSchoolId] = useState<number | null>(
     null,
@@ -123,7 +132,13 @@ export default function ProductConfiguratorPage() {
           ? Boolean(fitIntent)
           : step === 4
             ? true
-            : Boolean(selectedProject && selectedMeasurement && selectedSchool);
+            : Boolean(
+                selectedProject &&
+                  selectedMeasurement &&
+                  selectedSchool &&
+                  selectedBlock &&
+                  selectedRuleGraph
+              );
 
   const handleToggleTransform = (id: number) => {
     setSelectedTransformIds((prev) =>
@@ -132,25 +147,43 @@ export default function ProductConfiguratorPage() {
   };
 
   const handleCreateProject = async () => {
-    if (!newProjectName.trim()) return;
+    if (!newProjectName.trim()) {
+      showToast("Please enter a project name", "error");
+      return;
+    }
     try {
       const created = await createProject.mutateAsync(newProjectName.trim());
       setSelectedProjectId(created.id);
       setNewProjectName("");
-      showToast("Project created successfully", "success");
+      showToast(`Project "${created.name}" created and selected`, "success");
     } catch (error: any) {
-      showToast(error?.message || "Failed to create project", "error");
+      console.error("Failed to create project:", error);
+      showToast(
+        error?.message || "Failed to create project. Please try again.",
+        "error"
+      );
     }
   };
 
   const handleCreateProfile = async () => {
     if (!newProfileName.trim()) return;
+    // Convert string values to numbers, filtering out empty values
+    const values: Record<string, number> = {};
+    Object.entries(newProfileValues).forEach(([key, value]) => {
+      if (value && value.trim() !== "") {
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue)) {
+          values[key] = numValue;
+        }
+      }
+    });
+    
     try {
       const created = await createMeasurementProfile.mutateAsync({
         name: newProfileName.trim(),
         category: newProfileCategory,
         unit: newProfileUnit,
-        values: {},
+        values: values,
       });
       setSelectedMeasurementId(created.id);
       setCreatingProfile(false);
@@ -169,10 +202,21 @@ export default function ProductConfiguratorPage() {
       !selectedBlock ||
       !selectedRuleGraph
     ) {
+      const missing = [];
+      if (!selectedProject) missing.push("project");
+      if (!selectedMeasurement) missing.push("measurement profile");
+      if (!selectedSchool) missing.push("drafting school");
+      if (!selectedBlock) missing.push("block");
+      if (!selectedRuleGraph) missing.push("rule graph");
+      showToast(
+        `Please select: ${missing.join(", ")}`,
+        "error"
+      );
       return;
     }
 
     try {
+      showToast("Generating pattern...", "info");
       const response = await generatePattern.mutateAsync({
         project_id: selectedProject.id,
         garment_type: product.defaults.garment_type,
@@ -197,11 +241,15 @@ export default function ProductConfiguratorPage() {
         transform_pipeline_ids: selectedTransformIds.map(String),
       });
 
-      showToast("Pattern generated successfully", "success");
-      router.push(`/patterns/${response.pattern_id}`);
+      showToast("Pattern generated successfully! Redirecting...", "success");
+      // Small delay to show success message
+      setTimeout(() => {
+        router.push(`/patterns/${response.pattern_id}`);
+      }, 500);
     } catch (error: any) {
+      console.error("Failed to generate pattern:", error);
       showToast(
-        error?.message || "Failed to generate pattern. Please try again.",
+        error?.message || "Failed to generate pattern. Please check the console for details.",
         "error",
       );
     }
@@ -290,7 +338,7 @@ export default function ProductConfiguratorPage() {
                     : "Create new measurement profile"}
                 </button>
                 {creatingProfile && (
-                  <div className="space-y-2 rounded-lg border border-slate-200 bg-white/80 p-3 text-xs">
+                  <div className="space-y-3 rounded-lg border border-slate-200 bg-white/80 p-3 text-xs">
                     <div className="space-y-1">
                       <label className="block text-[11px] text-slate-700">
                         Profile name
@@ -333,10 +381,77 @@ export default function ProductConfiguratorPage() {
                         </select>
                       </div>
                     </div>
+                    <div className="border-t border-slate-200 pt-2">
+                      <label className="block text-[11px] font-medium text-slate-700 mb-2">
+                        Body Measurements (required)
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="block text-[10px] text-slate-600">Chest/Bust</label>
+                          <input
+                            type="number"
+                            value={newProfileValues.chest}
+                            onChange={(e) => setNewProfileValues({...newProfileValues, chest: e.target.value, bust: e.target.value})}
+                            placeholder="900"
+                            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[10px] text-slate-600">Waist</label>
+                          <input
+                            type="number"
+                            value={newProfileValues.waist}
+                            onChange={(e) => setNewProfileValues({...newProfileValues, waist: e.target.value})}
+                            placeholder="700"
+                            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[10px] text-slate-600">Hip</label>
+                          <input
+                            type="number"
+                            value={newProfileValues.hip}
+                            onChange={(e) => setNewProfileValues({...newProfileValues, hip: e.target.value})}
+                            placeholder="950"
+                            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[10px] text-slate-600">Back Length</label>
+                          <input
+                            type="number"
+                            value={newProfileValues.back_length}
+                            onChange={(e) => setNewProfileValues({...newProfileValues, back_length: e.target.value})}
+                            placeholder="400"
+                            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[10px] text-slate-600">Shoulder Width</label>
+                          <input
+                            type="number"
+                            value={newProfileValues.shoulder_width}
+                            onChange={(e) => setNewProfileValues({...newProfileValues, shoulder_width: e.target.value})}
+                            placeholder="380"
+                            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[10px] text-slate-600">Body Height</label>
+                          <input
+                            type="number"
+                            value={newProfileValues.body_height}
+                            onChange={(e) => setNewProfileValues({...newProfileValues, body_height: e.target.value})}
+                            placeholder="1650"
+                            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
+                          />
+                        </div>
+                      </div>
+                    </div>
                     <button
                       type="button"
                       onClick={handleCreateProfile}
-                      className="mt-1 rounded-md bg-sky-500 px-3 py-1 text-xs font-medium text-white hover:bg-sky-600"
+                      className="mt-2 w-full rounded-md bg-sky-500 px-3 py-1 text-xs font-medium text-white hover:bg-sky-600"
                     >
                       Save profile
                     </button>

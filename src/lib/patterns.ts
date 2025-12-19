@@ -66,6 +66,7 @@ export async function exportPatternFile(
   const token = getAccessToken();
   const url = `${API_BASE_URL}/patterns/${patternId}/export?format=${format}`;
   const response = await fetch(url, {
+    method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!response.ok) {
@@ -88,8 +89,17 @@ export function useGeneratePattern() {
   return useMutation({
     mutationFn: generatePattern,
     onSuccess: (data) => {
+      // Invalidate pattern result
       queryClient.invalidateQueries({
         queryKey: ["pattern-result", data.pattern_id],
+      });
+      // Invalidate project patterns list so history updates
+      queryClient.invalidateQueries({
+        queryKey: ["project-patterns"],
+      });
+      // Also invalidate projects list in case it shows pattern counts
+      queryClient.invalidateQueries({
+        queryKey: ["projects"],
       });
     },
   });

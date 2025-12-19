@@ -42,8 +42,9 @@ export async function apiFetch<T>(
 
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
-  if (!(options.body instanceof FormData)) {
-    headers.set("Content-Type", headers.get("Content-Type") ?? "application/json");
+  // Don't override Content-Type if it's already set (for FormData, URLSearchParams, or form-urlencoded)
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
   }
 
   const token = getAccessToken();
@@ -57,6 +58,15 @@ export async function apiFetch<T>(
   });
 
   if (!response.ok) {
+    // Handle 401 Unauthorized - token expired or invalid
+    if (response.status === 401) {
+      // Clear token and redirect to login
+      const { setAccessToken } = await import("./auth/tokenStore");
+      setAccessToken(null);
+      if (typeof window !== "undefined") {
+        window.location.href = "/auth/login";
+      }
+    }
     throw await parseError(response);
   }
 
@@ -67,6 +77,8 @@ export async function apiFetch<T>(
 
   return (await response.json()) as T;
 }
+
+
 
 
 

@@ -38,9 +38,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const token = await apiFetch<TokenResponse>("/auth/login", {
         method: "POST",
-        body,
+        body: body.toString(),
         headers: {
-          // Let apiClient set Accept, do not override Content-Type here for FormData/URLSearchParams
           "Content-Type": "application/x-www-form-urlencoded",
         },
       });

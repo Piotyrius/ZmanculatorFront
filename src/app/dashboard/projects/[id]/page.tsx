@@ -20,6 +20,7 @@ import { listProjects, type Project } from "../../../../lib/projects";
 import { apiFetch } from "../../../../lib/apiClient";
 import { API_BASE_URL } from "../../../../lib/config";
 import PatternViewer from "../../../../components/PatternViewer";
+import { showToast } from "../../../../components/Toast";
 
 type Step =
   | "measurement"
@@ -52,23 +53,16 @@ export default function ProjectWorkspacePage() {
   const [activeTab, setActiveTab] = useState<Tab>("configure");
   const [patternHistory, setPatternHistory] = useState<any[]>([]);
 
-  const { data: draftingSchools } = useDraftingSchools();
-  const { data: blocks } = useBlocks();
-  const { data: ruleGraphs } = useRuleGraphs();
+  const { data: draftingSchools, isLoading: schoolsLoading, error: schoolsError } = useDraftingSchools();
+  const { data: blocks, isLoading: blocksLoading } = useBlocks();
+  const { data: ruleGraphs, isLoading: ruleGraphsLoading } = useRuleGraphs();
   const { data: easeProfiles } = useEaseProfiles();
   const { data: sizeProfiles } = useSizeProfiles();
   const { data: transformPipelines } = useTransformPipelines();
   
-  // Prefer a small, well-tested subset, but fall back to all available configs
+  // Show ALL available drafting schools (no filtering for MVP)
   const allSchools = draftingSchools ?? [];
-  const filteredSchools =
-    allSchools.filter(
-      (school) =>
-        school.name.toLowerCase().includes("winifred aldrich") ||
-        school.name.toLowerCase().includes("müller") ||
-        school.name.toLowerCase().includes("muller")
-    ) ?? [];
-  const mvpSchools = filteredSchools.length > 0 ? filteredSchools : allSchools;
+  const mvpSchools = allSchools;
 
   const allBlocks = blocks ?? [];
   const filteredBlocks =
@@ -126,6 +120,7 @@ export default function ProjectWorkspacePage() {
       const response = await fetch(
         `${API_BASE_URL}/patterns/${patternId}/export?format=${format}`,
         {
+          method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -196,6 +191,18 @@ export default function ProjectWorkspacePage() {
 
       setGeneratedPatternId(result.pattern_id);
       setStep("generate");
+      showToast("Pattern generation started! Check the preview below.", "success");
+      
+      // Reload pattern history to show the new pattern
+      try {
+        const history = await apiFetch<any[]>(`/projects/${projectId}/patterns`);
+        setPatternHistory(history);
+        if (history.length > 0) {
+          showToast(`Pattern created! View it in the History tab.`, "info");
+        }
+      } catch (historyError) {
+        console.error("Failed to reload pattern history:", historyError);
+      }
       
       // Refetch pattern result after a short delay
       setTimeout(() => {
@@ -203,6 +210,8 @@ export default function ProjectWorkspacePage() {
       }, 1000);
     } catch (error) {
       console.error("Failed to generate pattern:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      showToast(`Failed to generate pattern: ${errorMessage}`, "error");
     }
   };
 
@@ -389,120 +398,134 @@ export default function ProjectWorkspacePage() {
               {step !== "measurement" && step !== "category" && (
                 <div className="mb-4">
                   <h3 className="mb-2 text-sm font-medium text-slate-900">
-                    3. Drafting School
+                    3. Drafting School / Construction System
                   </h3>
-                  <select
-                    value={selectedSchool || ""}
-                    onChange={(e) =>
-                      setSelectedSchool(
-                        e.target.value ? parseInt(e.target.value, 10) : null
-                      )
-                    }
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
-                  >
-                    <option value="">Choose drafting school...</option>
-                    {mvpSchools.map((school) => (
-                      <option key={school.id} value={school.id}>
-                        {school.name} (v{school.version})
-                      </option>
-                    ))}
-                  </select>
-                  {mvpSchools.length === 0 && (
-                    <p className="mt-2 text-xs text-slate-500">
-                      Using Winifred Aldrich drafting system (MVP)
-                    </p>
-                  )}
-                  {selectedSchool && (
-                    <button
-                      onClick={() => setStep("block")}
-                      className="mt-2 w-full rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-400"
-                    >
-                      Next: Block
-                    </button>
+                  {schoolsLoading ? (
+                    <div className="w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      Loading drafting schools...
+                    </div>
+                  ) : schoolsError ? (
+                    <div className="w-full rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-600">
+                      Error loading schools. Please refresh the page.
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        value={selectedSchool || ""}
+                        onChange={(e) =>
+                          setSelectedSchool(
+                            e.target.value ? parseInt(e.target.value, 10) : null
+                          )
+                        }
+                        className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
+                        disabled={mvpSchools.length === 0}
+                      >
+                        <option value="">Choose drafting school...</option>
+                        {mvpSchools.map((school) => (
+                          <option key={school.id} value={school.id}>
+                            {school.name} (v{school.version})
+                          </option>
+                        ))}
+                      </select>
+                      {mvpSchools.length === 0 && !schoolsLoading && (
+                        <p className="mt-2 text-xs text-amber-600">
+                          ⚠️ No drafting schools available. Please ensure the backend is running and schools are seeded.
+                        </p>
+                      )}
+                      {mvpSchools.length > 0 && (
+                        <p className="mt-2 text-xs text-slate-500">
+                          {mvpSchools.length} drafting system{mvpSchools.length !== 1 ? 's' : ''} available
+                        </p>
+                      )}
+                      {selectedSchool && (
+                        <p className="mt-2 text-xs text-green-600">
+                          ✓ School selected. Block options will appear below.
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               )}
 
-              {/* Step 4: Block */}
-              {step !== "measurement" &&
-                step !== "category" &&
-                step !== "school" && (
-                  <div className="mb-4">
-                    <h3 className="mb-2 text-sm font-medium text-slate-900">
-                      4. Block Configuration
-                    </h3>
-                    <select
-                      value={selectedBlock || ""}
-                      onChange={(e) =>
-                        setSelectedBlock(
-                          e.target.value ? parseInt(e.target.value, 10) : null
-                        )
-                      }
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
-                    >
-                      <option value="">Choose block...</option>
-                      {mvpBlocks.map((block) => (
-                        <option key={block.id} value={block.id}>
-                          {block.name} (v{block.version})
-                        </option>
-                      ))}
-                    </select>
-                    {mvpBlocks.length === 0 && (
-                      <p className="mt-2 text-xs text-slate-500">
-                        Only tested blocks are shown (Bodice with Waist Darts)
-                      </p>
-                    )}
-                    {selectedBlock && (
-                      <button
-                        onClick={() => setStep("ruleGraph")}
-                        className="mt-2 w-full rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-400"
-                      >
-                        Next: Rule Graph
-                      </button>
-                    )}
-                  </div>
-                )}
+              {/* Step 4: Block - Show when school is selected */}
+              {selectedSchool && (
+                <div className="mb-4">
+                  <h3 className="mb-2 text-sm font-medium text-slate-900">
+                    4. Block Configuration
+                  </h3>
+                  <select
+                    value={selectedBlock || ""}
+                    onChange={(e) =>
+                      setSelectedBlock(
+                        e.target.value ? parseInt(e.target.value, 10) : null
+                      )
+                    }
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
+                    disabled={mvpBlocks.length === 0}
+                  >
+                    <option value="">Choose block...</option>
+                    {mvpBlocks.map((block) => (
+                      <option key={block.id} value={block.id}>
+                        {block.name} (v{block.version})
+                      </option>
+                    ))}
+                  </select>
+                  {mvpBlocks.length === 0 && (
+                    <p className="mt-2 text-xs text-amber-600">
+                      ⚠️ No blocks available. Please seed blocks in the database.
+                    </p>
+                  )}
+                  {mvpBlocks.length > 0 && !selectedBlock && (
+                    <p className="mt-2 text-xs text-slate-500">
+                      {mvpBlocks.length} block{mvpBlocks.length !== 1 ? 's' : ''} available
+                    </p>
+                  )}
+                </div>
+              )}
 
-              {/* Step 5: Rule Graph */}
-              {step !== "measurement" &&
-                step !== "category" &&
-                step !== "school" &&
-                step !== "block" && (
-                  <div className="mb-4">
-                    <h3 className="mb-2 text-sm font-medium text-slate-900">
-                      5. Rule Graph Configuration
-                    </h3>
-                    <select
-                      value={selectedRuleGraph || ""}
-                      onChange={(e) =>
-                        setSelectedRuleGraph(
-                          e.target.value ? parseInt(e.target.value, 10) : null
-                        )
-                      }
-                      className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
+              {/* Step 5: Rule Graph - Show when block is selected */}
+              {selectedBlock && (
+                <div className="mb-4">
+                  <h3 className="mb-2 text-sm font-medium text-slate-900">
+                    5. Rule Graph Configuration
+                  </h3>
+                  <select
+                    value={selectedRuleGraph || ""}
+                    onChange={(e) =>
+                      setSelectedRuleGraph(
+                        e.target.value ? parseInt(e.target.value, 10) : null
+                      )
+                    }
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-500"
+                    disabled={mvpRuleGraphs.length === 0}
+                  >
+                    <option value="">Choose rule graph...</option>
+                    {mvpRuleGraphs.map((graph) => (
+                      <option key={graph.id} value={graph.id}>
+                        {graph.name} (v{graph.version})
+                      </option>
+                    ))}
+                  </select>
+                  {mvpRuleGraphs.length === 0 && (
+                    <p className="mt-2 text-xs text-amber-600">
+                      ⚠️ No rule graphs available. Please seed rule graphs in the database.
+                    </p>
+                  )}
+                  {mvpRuleGraphs.length > 0 && !selectedRuleGraph && (
+                    <p className="mt-2 text-xs text-slate-500">
+                      {mvpRuleGraphs.length} rule graph{mvpRuleGraphs.length !== 1 ? 's' : ''} available
+                    </p>
+                  )}
+                  {selectedRuleGraph && (
+                    <button
+                      onClick={() => setStep("ease")}
+                      className="mt-2 w-full rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-400"
                     >
-                      <option value="">Choose rule graph...</option>
-                      {mvpRuleGraphs.map((graph) => (
-                        <option key={graph.id} value={graph.id}>
-                          {graph.name} (v{graph.version})
-                        </option>
-                      ))}
-                    </select>
-                    {mvpRuleGraphs.length === 0 && (
-                      <p className="mt-2 text-xs text-slate-500">
-                        Only tested rule graphs are shown
-                      </p>
-                    )}
-                    {selectedRuleGraph && (
-                      <button
-                        onClick={() => setStep("ease")}
-                        className="mt-2 w-full rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-sky-400"
-                      >
-                        Next: Ease Profile (Optional)
-                      </button>
-                    )}
-                  </div>
-                )}
+                      Next: Ease Profile (Optional)
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Step 6: Ease Profile (Optional) */}
               {step !== "measurement" &&
